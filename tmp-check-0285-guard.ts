@@ -1,6 +1,6 @@
 import { PGlite } from "@electric-sql/pglite";
-import pgcrypto from "@electric-sql/pglite/contrib/pgcrypto";
-import btree_gist from "@electric-sql/pglite/contrib/btree_gist";
+import { pgcrypto } from "@electric-sql/pglite/contrib/pgcrypto";
+import { btree_gist } from "@electric-sql/pglite/contrib/btree_gist";
 import { replayDb, applyPending } from "./scripts/formal-rls/replay.ts";
 
 const db = new PGlite({ extensions: { pgcrypto, btree_gist } });
