@@ -121,7 +121,9 @@ async function asCommit<T>(userId: string | null, query: string, params: unknown
 /** The single jsonb object a definer hands back, or null. */
 async function one(userId: string | null, query: string, params: unknown[] = []): Promise<Record<string, unknown> | null> {
   const rows = await as<Record<string, unknown>>(userId, query, params);
-  return rows.length ? (rows[0] as Record<string, unknown>) : null;
+  if (!rows.length) return null;
+  const value = Object.values(rows[0])[0];
+  return (value ?? null) as Record<string, unknown> | null;
 }
 
 // ------------------------------------------------------------------ table and function rights
