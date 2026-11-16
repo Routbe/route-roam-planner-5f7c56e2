@@ -70,8 +70,8 @@ const BUCKET_CHARS = [3583, 7679, 24063] as const;
 const BUCKET_BYTES = [2687, 5759, 18047] as const;
 
 const enc = new TextEncoder();
-const hex = (b: Uint8Array) => Array.from(b, (x) => x.toString(16).padStart(2, "0")).join("");
-const bytea = (b: Uint8Array) => `\\x${hex(b)}`;
+/** PGlite sends a bytea parameter as raw bytes; the \x spelling only belongs in SQL text. */
+const bytea = (b: Uint8Array): Uint8Array => b;
 const nowBucket = () => Math.floor(Date.now() / 1000 / 600);
 
 /** One RVE1 envelope of the given kind, in base64url, at one of the three padded sizes. */
@@ -157,7 +157,7 @@ describe("rout_app and PUBLIC hold no table rights", () => {
     for (const t of TABLES) {
       for (const role of ["rout_app", "public"]) {
         const rows = await db.query<{ p: boolean }>(
-          `select pg_catalog.has_any_table_privilege($1::pg_catalog.regrole, 'public.${t}'::pg_catalog.regclass, 'SELECT,INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER') p`,
+          `select pg_catalog.has_any_table_privilege($1::pg_catalog.regrole, 'public.${t}'::pg_catalog.regclass, 'SELECT,INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER'::pg_catalog.text) p`,
           [role],
         );
         expect(rows.rows[0]?.p, `${role} on ${t}`).toBe(false);
@@ -243,8 +243,15 @@ describe("workspace key epochs", () => {
       [WS, ADMIN, "00000000-0000-4000-8000-0000000000f2", kid(), envelope("wa")])).toMatchObject({ reason: "invalid" });
     expect(await one(OWNER, `select * from public.rout_ws_group_member_store($1, 1, $2, $3, $4, $5)`,
       [WS, ADMIN, "00000000-0000-4000-8000-0000000000f2", kid(), envelope("wsk")])).toMatchObject({ reason: "epoch" });
+    // Shape is all the database can judge: a right-sized, right-headed envelope is stored
+    // even when its bytes are noise, because only the enclave can open it (as in db/0278).
     expect(await one(OWNER, `select * from public.rout_ws_group_member_store($1, 2, $2, $3, $4, $5)`,
-      [WS, ADMIN, "00000000-0000-4000-8000-0000000000f2", kid(), "UlZFMQEK" + "A".repeat(3575)])).toMatchObject({ reason: "invalid" });
+      [WS, ADMIN, "00000000-0000-4000-8000-0000000000f2", kid(), "UlZFMQEK" + "A".repeat(3575)])).toMatchObject({ ok: true });
+    // A wrong size, or a character outside the base64url alphabet, never lands.
+    expect(await one(OWNER, `select * from public.rout_ws_group_member_store($1, 2, $2, $3, $4, $5)`,
+      [WS, ADMIN, "00000000-0000-4000-8000-0000000000f2", kid(), "UlZFMQEK" + "A".repeat(100)])).toMatchObject({ reason: "invalid" });
+    expect(await one(OWNER, `select * from public.rout_ws_group_member_store($1, 2, $2, $3, $4, $5)`,
+      [WS, ADMIN, "00000000-0000-4000-8000-0000000000f2", kid(), "UlZFMQEK" + "A".repeat(3573) + "+A"])).toMatchObject({ reason: "invalid" });
   });
 
   it("a member fetches only their own key, and only while they are owner or admin", async () => {
