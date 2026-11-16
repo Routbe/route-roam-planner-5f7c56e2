@@ -157,7 +157,7 @@ describe("rout_app and PUBLIC hold no table rights", () => {
     for (const t of TABLES) {
       for (const role of ["rout_app", "public"]) {
         const rows = await db.query<{ p: boolean }>(
-          `select pg_catalog.has_any_table_privilege($1::pg_catalog.regrole, 'public.${t}'::pg_catalog.regclass, 'SELECT,INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER'::pg_catalog.text) p`,
+          `select pg_catalog.has_table_privilege($1, 'public.${t}', 'SELECT,INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER') p`,
           [role],
         );
         expect(rows.rows[0]?.p, `${role} on ${t}`).toBe(false);
@@ -487,9 +487,9 @@ describe("bounded model check of the key and question lifecycle", () => {
       delete from public.workspace_member_keys;
       delete from public.workspace_keys;
       delete from public.workspace_ask_settings;
-      update public.workspace_members set role = case user_id
+      update public.workspace_members set role = (case user_id
         when '${OWNER}' then 'owner' when '${ADMIN}' then 'admin' when '${EDITOR}' then 'editor'
-        when '${DEVELOPER}' then 'developer' when '${VIEWER}' then 'viewer' end
+        when '${DEVELOPER}' then 'developer' when '${VIEWER}' then 'viewer' end)::public.workspace_role
        where workspace_id = '${WS}';
     `);
     await one(OWNER, `select * from public.rout_ws_ask_save($1, true)`, [WS]);

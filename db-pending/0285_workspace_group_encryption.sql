@@ -332,10 +332,11 @@ begin
    where w.slug = pg_catalog.lower(p_slug)
    limit 1;
   if v_ws is null then return pg_catalog.jsonb_build_object('ok', false, 'reason', 'unavailable'); end if;
-  -- The envelope must carry the epoch the visitor was actually shown. Which key that epoch
-  -- holds is checked by the server on the envelope header before this call, as in db/0278.
+  -- The envelope must carry the epoch the visitor was actually shown: the live one. A retired
+  -- epoch is closed to new questions, so an old key can never collect fresh ciphertext.
+  -- Which key that epoch holds is checked by the server on the envelope header first, as in db/0278.
   if not exists (select 1 from public.workspace_keys k
-                  where k.workspace_id = v_ws and k.epoch = p_epoch) then
+                  where k.workspace_id = v_ws and k.epoch = p_epoch and k.status = 'active') then
     return pg_catalog.jsonb_build_object('ok', false, 'reason', 'epoch');
   end if;
   -- Flood ceiling on top of the proof-of-work.
