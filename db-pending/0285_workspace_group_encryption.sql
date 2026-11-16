@@ -264,7 +264,7 @@ as $function$
                              where x.workspace_id = p_ws and x.role::text in ('owner', 'admin')
                                and not exists (select 1 from public.workspace_member_keys m
                                                 where m.workspace_id = k.workspace_id and m.epoch = k.epoch
-                                                  and m.member_user_id = x.user_id)), '[]'::jsonb))
+                                                  and m.member_user_id = x.user_id)), '[]'::jsonb)
         ) order by k.epoch desc)
        from public.workspace_keys k where k.workspace_id = p_ws), '[]'::jsonb))
     else pg_catalog.jsonb_build_object('epochs', '[]'::jsonb) end
