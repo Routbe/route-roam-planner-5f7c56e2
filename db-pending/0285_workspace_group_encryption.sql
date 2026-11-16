@@ -80,7 +80,6 @@ create table if not exists public.workspace_questions (
   workspace_id     uuid not null references public.workspaces(id) on delete cascade,
   epoch            integer not null,
   payload_id       uuid not null unique,
-  host_ref         uuid not null,
   -- RVE1 kind wq: the question, sealed to the workspace key of this epoch.
   envelope         text not null check (
     envelope ~ '^[A-Za-z0-9_-]+$' and length(envelope) in (3583, 7679, 24063)
@@ -331,9 +330,10 @@ begin
    where w.slug = pg_catalog.lower(p_slug)
    limit 1;
   if v_ws is null then return pg_catalog.jsonb_build_object('ok', false, 'reason', 'unavailable'); end if;
-  if p_epoch is null then return pg_catalog.jsonb_build_object('ok', false, 'reason', 'epoch'); end if;
-  -- The envelope must belong to the key the visitor was actually shown.
-  if public.rout_ws_group_envelope_kid(p_envelope) is distinct from v_kid then
+  -- The envelope must carry the epoch the visitor was actually shown. Which key that epoch
+  -- holds is checked by the server on the envelope header before this call, as in db/0278.
+  if not exists (select 1 from public.workspace_keys k
+                  where k.workspace_id = v_ws and k.epoch = p_epoch) then
     return pg_catalog.jsonb_build_object('ok', false, 'reason', 'epoch');
   end if;
   -- Flood ceiling on top of the proof-of-work.
@@ -342,9 +342,9 @@ begin
     return pg_catalog.jsonb_build_object('ok', false, 'reason', 'rate_limited');
   end if;
   begin
-    insert into public.workspace_questions (workspace_id, epoch, payload_id, host_ref, envelope,
+    insert into public.workspace_questions (workspace_id, epoch, payload_id, envelope,
       blake3_payload_hash, pow_nonce, epoch_bucket, guest_public_key, token_hash)
-    values (v_ws, p_epoch, p_payload_id, public.rout_ws_group_ref_of(p_envelope), p_envelope,
+    values (v_ws, p_epoch, p_payload_id, p_envelope,
       p_hash, p_pow_nonce, p_epoch_bucket, p_guest_public_key, p_token_hash)
     returning id into v_id;
   exception when unique_violation then
@@ -352,13 +352,6 @@ begin
   end;
   return pg_catalog.jsonb_build_object('ok', true, 'id', v_id);
 end $function$;
-
--- Recipient key id of an envelope, as stored: bytes 7..22 of the base64url header.
-create or replace function public.rout_ws_group_envelope_kid(p_envelope text)
- returns text language sql immutable security definer set search_path = pg_catalog, pg_temp
-as $function$
-  select pg_catalog.translate(pg_catalog.substring(p_envelope, 10, 22), '+/', '-')
-$function$;
 
 -- --------------------------------------------------------------------------- managers: inbox
 
@@ -482,7 +475,6 @@ revoke all on function public.rout_ws_group_manager(uuid) from public, rout_app;
 revoke all on function public.rout_ws_group_envelope_ok(text, text) from public, rout_app;
 revoke all on function public.rout_ws_group_epoch_ok(integer) from public, rout_app;
 revoke all on function public.rout_ws_group_active(uuid) from public, rout_app;
-revoke all on function public.rout_ws_group_envelope_kid(text) from public, rout_app;
 
 -- Entry points: PUBLIC gets nothing, rout_app executes exactly these.
 revoke all on function public.rout_ws_group_publish(uuid, integer, text, text) from public;
