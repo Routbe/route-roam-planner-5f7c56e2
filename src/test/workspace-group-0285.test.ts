@@ -118,9 +118,10 @@ async function asCommit<T>(userId: string | null, query: string, params: unknown
     throw e;
   }
 }
-/** The single jsonb object a definer hands back, or null. */
+/** The single jsonb object a definer hands back, or null. Commits, so a stored key,
+ *  envelope, switch or question is really on the table for the tests that follow. */
 async function one(userId: string | null, query: string, params: unknown[] = []): Promise<Record<string, unknown> | null> {
-  const rows = await as<Record<string, unknown>>(userId, query, params);
+  const rows = await asCommit<Record<string, unknown>>(userId, query, params);
   if (!rows.length) return null;
   const value = Object.values(rows[0])[0];
   return (value ?? null) as Record<string, unknown> | null;
@@ -133,7 +134,7 @@ describe("rout_app and PUBLIC hold no table rights", () => {
     for (const t of TABLES) {
       for (const role of ["rout_app", "public"]) {
         const rows = await db.query<{ p: boolean }>(
-          `select pg_catalog.has_any_table_privilege($1, 'public.${t}', 'SELECT,INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER') p`,
+          `select pg_catalog.has_any_table_privilege($1::pg_catalog.regrole, 'public.${t}'::pg_catalog.regclass, 'SELECT,INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER') p`,
           [role],
         );
         expect(rows.rows[0]?.p, `${role} on ${t}`).toBe(false);
@@ -163,10 +164,10 @@ describe("rout_app and PUBLIC hold no table rights", () => {
 
   it("every new SECURITY DEFINER function runs on pg_catalog, pg_temp", async () => {
     const rows = await db.query<{ name: string; cfg: string[] | null }>(
-      `select p.proname name, p.proconfig cfg from pg_proc p
-         join pg_namespace n on n.oid = p.pronamespace
-        where n.nspname = 'public' and p.prorettype::regtype::text <> 'void'
-          and p.proname like 'rout_ws_%' or p.proname like 'rout_public_ws_%'`,
+      `select p.proname name, p.proconfig cfg from pg_catalog.pg_proc p
+         join pg_catalog.pg_namespace n on n.oid = p.pronamespace
+        where n.nspname = 'public' and p.prorettype::pg_catalog.regtype::pg_catalog.text <> 'void'
+          and (p.proname like 'rout_ws_%' or p.proname like 'rout_public_ws_%')`,
     );
     const names = new Set([...ENTRY_POINTS, ...INTERNALS].map((f) => f.split("(")[0]));
     for (const r of rows.rows) {
@@ -197,14 +198,13 @@ describe("workspace key epochs", () => {
     const rows = await as<{ live: number; retired: number }>(OWNER,
       `select count(*) filter (where status = 'active') live, count(*) filter (where status = 'retired') retired
          from public.rout_ws_group_state($1) s, pg_catalog.jsonb_array_elements(s->'epochs') e
-        where e->>'status' is not null`, [WS]).catch(() => null);
+         where e->>'status' is not null`, [WS]).catch(() => null);
     // The state view is the manager's own summary; read it directly for the counts.
     const st = await one(OWNER, `select * from public.rout_ws_group_state($1)`, [WS]);
     const epochs = (st?.epochs ?? []) as { epoch: number; status: string }[];
     expect(epochs.map((e) => [e.epoch, e.status]).sort((a, b) => a[0] - b[0])).toEqual([[1, "retired"], [2, "active"]]);
     expect(epochs.filter((e) => e.status === "active")).toHaveLength(1);
-    expect(rows).toBeNull();
-  });
+    expect(rows).toBeNull();  });
 
   it("a member envelope is stored only for role owner or admin", async () => {
     for (const [member, role] of [[EDITOR, "editor"], [DEVELOPER, "developer"], [VIEWER, "viewer"], [OUTSIDER, "outsider"]] as const) {
