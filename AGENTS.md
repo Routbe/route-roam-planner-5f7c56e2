@@ -76,7 +76,7 @@ use the editor.
 - The free `rout_server` policies from db/0154 are removed table by table, only after every runtime read/write is moved into the owner's context or a narrow SECURITY DEFINER function; account purge deletes rely on `public.rout_purge_due(user_id)`. Why: dropping them all at once stops sign-in, payments and admin, and the purge runs without a member context.
 
 ## Neon database access
-- The app runtime connects only through the DATABASE_URL secret (rout_app login); the owner-level Neon connection stays unlinked from the project and is used solely by the agent for reviewed schema work. Why: a linked NEON_API_KEY makes the gateway transport win over DATABASE_URL, so preview would diverge from the Vercel runtime.
+- The app runtime connects only through the DATABASE_URL secret (rout_app login); the owner-level Neon connection may stay linked to the project (owner's choice 2026-11-16) and is used by the agent only for reviewed schema work. Why: the runtime path must stay the rout_app login whatever the owner connection does.
 
 ## Migration history
 - Every row in public.schema_migrations must match a file in db/ or an entry in scripts/migration-history-allowlist.ts carrying Neon's exact checksum; check with scripts/migration-history-check.ts and never rewrite Neon's rows. Why: history drift stays visible without falsifying what actually ran.
@@ -111,5 +111,5 @@ use the editor.
 
 <!-- AGENT-MEMORY:BEGIN -->
 ## One-file migration rollout
-- A GO for a single migration is applied from chat with scripts/migration-rollout.ts: the exact db/ file text travels as one parameter, runs only if its SHA-256 equals the file checksum and its predecessor is recorded, and is recorded with the definer guard in the same transaction (dry run: src/test/migration-rollout.test.ts). Why: the Neon connection stays unlinked, so migrate-gateway.ts cannot run, and a retyped or hand-split file must never diverge from db/.
+- A GO for a single migration is applied from chat with scripts/migration-rollout.ts: the exact db/ file text travels as one parameter, runs only if its SHA-256 equals the file checksum and its predecessor is recorded, and is recorded with the definer guard in the same transaction (dry run: src/test/migration-rollout.test.ts). Why: a retyped or hand-split file must never diverge from db/.
 <!-- AGENT-MEMORY:END -->

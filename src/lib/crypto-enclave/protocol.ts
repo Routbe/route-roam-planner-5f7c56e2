@@ -110,6 +110,66 @@ export interface EnclaveOps {
     res: { payloadId: string; hosts: { ref: string; envelope: Uint8Array }[]; pow: { nonce: string; epoch: number } | null };
   };
 
+  // ---- Workspace group encryption (db-pending/0285, workspace-seal.ts) ----
+
+  /**
+   * A workspace's own key pair for one epoch, sealed to the manager who creates it. The
+   * secret half never leaves the worker: it goes out only inside `envelope` (kind wsk).
+   */
+  "wsGroup.generate": {
+    req: { workspaceId: string; epoch: number; self: { memberRef: string; publicKey: Uint8Array } };
+    res: { publicKey: Uint8Array; kid: Uint8Array; envelope: Uint8Array };
+  };
+  /** Ships the workspace key to more managers, opened from the caller's own envelope. */
+  "wsGroup.sealFor": {
+    req: {
+      userId: string;
+      workspaceId: string;
+      epoch: number;
+      own: { envelope: Uint8Array; memberRef: string };
+      targets: { memberRef: string; publicKey: Uint8Array }[];
+    };
+    res: { envelopes: { memberRef: string; envelope: Uint8Array }[] };
+  };
+  /** Managers: the question texts of their own workspace, opened with the workspace key. */
+  "wsQuestion.open": {
+    req: {
+      userId: string;
+      workspaceId: string;
+      epoch: number;
+      own: { envelope: Uint8Array; memberRef: string };
+      items: { payloadId: string; envelope: Uint8Array }[];
+    };
+    res: { texts: (string | null)[] };
+  };
+  /**
+   * Visitor: seals one question to the workspace's live key and derives a reply key from a
+   * fresh token. `token` (base64url) is the only secret the visitor keeps -- the server sees
+   * its hash and the reply public key, never the token itself.
+   */
+  "wsQuestion.seal": {
+    req: { workspaceId: string; epoch: number; workspacePublicKey: Uint8Array; text: string };
+    res: {
+      payloadId: string;
+      envelope: Uint8Array;
+      hash: Uint8Array;
+      token: string;
+      guestPublicKey: Uint8Array;
+      tokenHash: Uint8Array;
+      pow: { nonce: string; epoch: number };
+    };
+  };
+  /** Manager: one private answer sealed to the visitor's reply key. */
+  "wsAnswer.seal": {
+    req: { replyPublicKey: Uint8Array; question: string; answer: string };
+    res: { envelope: Uint8Array; hash: Uint8Array };
+  };
+  /** Visitor: the answer their token finds and their derived reply key opens. */
+  "wsAnswer.open": {
+    req: { token: string; envelope: Uint8Array };
+    res: { question: string; answer: string };
+  };
+
   "hash.sha256Hex": { req: { text: string }; res: string };
 
   // ---- Password engine (Stap 3): Hashcash, paranoid input, OPAQUE + Argon2id ----

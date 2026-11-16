@@ -321,6 +321,6 @@
 - [x] Fase 1: 0284 live op Neon (één transactie, checksum gelijk, keten/rechten/triggers/snapshot nagekeken)
 - [x] Fase 1: volledige testsuite groen (544 bestanden, 3343 tests; 1 trage test robuust gemaakt)
 - [ ] Fase 1: productie opnieuw deployen zodat de health-probe 0284 meldt — eigenaar
-- [ ] Fase 2: db-pending/0285_workspace_group_encryption.sql (publieke sleutel, enveloppen owner/admin, epoch-rotatie, SECURITY DEFINER-ingangen)
-- [ ] Fase 2: PGlite + fast-check tests voor 0285
+- [x] Fase 2: db-pending/0285_workspace_group_encryption.sql — zes tabellen, enveloppen alleen voor eigenaar/beheerder, epoch-rotatie, omzetten van beheerder wist hun enveloppen, allemaal SECURITY DEFINER op pg_catalog, pg_temp (nog niet toegepast)
+- [x] Fase 2: PGlite + fast-check tests voor 0285 (src/test/workspace-group-0285.test.ts, 24 tests: rechten, RBAC, rotatie, vloedplafond, modelcheck tot diepte 3, rollback)
 - [ ] Fase 2: /w/:slug/ask (anoniem, RVE1 in de browser, #token=) + inbox met privé/FAQ-antwoord
