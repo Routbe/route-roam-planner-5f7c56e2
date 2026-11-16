@@ -234,6 +234,30 @@ begin
   return pg_catalog.jsonb_build_object('ok', true);
 end $function$;
 
+-- Losing the manager role takes the workspace key with it: every envelope of that member is
+-- deleted the moment they stop being owner or admin, so a former manager opens no question at
+-- all -- neither the ones filed before the change nor the ones filed after it. The trigger
+-- runs as definer because rout_app holds no privilege on the envelope table.
+create or replace function public.rout_ws_group_member_revoke()
+ returns trigger language plpgsql volatile security definer set search_path = pg_catalog, pg_temp
+as $function$
+begin
+  if tg_op = 'DELETE' then
+    delete from public.workspace_member_keys
+     where workspace_id = old.workspace_id and member_user_id = old.user_id;
+    return old;
+  end if;
+  if new.role::text not in ('owner', 'admin') then
+    delete from public.workspace_member_keys
+     where workspace_id = new.workspace_id and member_user_id = new.user_id;
+  end if;
+  return new;
+end $function$;
+
+create trigger workspace_members_role_revoke_ws_keys
+  after update of role or delete on public.workspace_members
+  for each row execute function public.rout_ws_group_member_revoke();
+
 -- The caller's own sealed workspace key for one epoch. A member who is no longer owner or
 -- admin gets nothing, even while an older envelope for that member is still on the table.
 create or replace function public.rout_ws_group_member_key(p_ws uuid, p_epoch integer)
