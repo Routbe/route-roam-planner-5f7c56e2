@@ -21,6 +21,7 @@ import fc from "fast-check";
 import { blake3 } from "@noble/hashes/blake3.js";
 import { sha256 } from "@noble/hashes/sha2.js";
 import { randomBytes } from "node:crypto";
+import { readFileSync } from "node:fs";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { applyPending, replayDb } from "../../scripts/formal-rls/replay";
 import { b64uDecode, b64uEncode } from "@/lib/booking-engine/sealed-booking";
