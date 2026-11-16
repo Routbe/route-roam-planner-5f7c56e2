@@ -85,6 +85,10 @@ const publicKey = () => b64uEncode(new Uint8Array(randomBytes(1600)));
 const kid = () => b64uEncode(new Uint8Array(randomBytes(16)));
 const tokenHash = () => sha256(new Uint8Array(randomBytes(32)));
 const hashOf = (e: string) => blake3(b64uDecode(e) ?? new Uint8Array(0));
+/** One anonymous submission against a given workspace's ask page. */
+const submitTo = (slug: string, e: string, epoch: number, hash: Uint8Array, th: Uint8Array, bucket = nowBucket()) =>
+  one(null, `select * from public.rout_ws_question_create($1, gen_random_uuid(), $2, $3, $4, '0123456789abcdef', $5, $6, $7)`,
+    [slug, epoch, e, bytea(hash), bucket, publicKey(), bytea(th)]);
 
 let db: PGlite;
 
@@ -306,13 +310,13 @@ describe("anonymous submissions", () => {
   });
 
   it("the flood ceiling closes the page for that hour", async () => {
-    for (let i = 0; i < 29; i++) {
+    // Its own workspace: 30 questions is the whole hour's budget, and the 31st never lands.
+    for (let i = 0; i < 30; i++) {
       const e = envelope("wq");
-      const r = await submit(null, e, 3, hashOf(e), tokenHash());
-      expect(r).toMatchObject({ ok: true });
+      expect(await submitTo(SLUG2, e, 1, hashOf(e), tokenHash()), `question ${i}`).toMatchObject({ ok: true });
     }
     const e = envelope("wq");
-    expect(await submit(null, e, 3, hashOf(e), tokenHash())).toMatchObject({ reason: "rate_limited" });
+    expect(await submitTo(SLUG2, e, 1, hashOf(e), tokenHash())).toMatchObject({ reason: "rate_limited" });
   });
 
   it("the inbox is only for managers and hands back ciphertext plus the reply key", async () => {
@@ -414,8 +418,7 @@ describe("fast-check properties", () => {
         fc.boolean(),
         async (kind, bucket, fresh) => {
           const e = envelope(kind as "wsk", bucket);
-          const r = await one(null, `select * from public.rout_ws_question_create($1, gen_random_uuid(), 3, $2, $3, '0123456789abcdef', $4, $5, $6)`,
-            [SLUG, e, bytea(hashOf(e)), fresh ? nowBucket() : nowBucket() + 9, publicKey(), bytea(tokenHash())]);
+          const r = await submitTo(SLUG3, e, 1, hashOf(e), tokenHash(), fresh ? nowBucket() : nowBucket() + 9);
           if (kind !== "wq") expect(r).toMatchObject({ reason: "invalid" });
           else if (!fresh) expect(r).toMatchObject({ reason: "pow_stale" });
           // A wq envelope in any of the three buckets with a fresh bucket is accepted up to
