@@ -89,7 +89,9 @@ describe("createSealedInquiry", () => {
     expect(await createSealedInquiry(parseInquiryRequest(request(sealed, proofFor(sealed, Date.now() - 30 * 60_000))))).toEqual({ ok: false, reason: "pow_stale" });
     expect(calls).toHaveLength(0);
     expect(lookups.host).toBe(0);
-  });
+    // First test in the file: it pays the one-time load of inquiry.server, which
+    // exceeds the default 5 s when the full suite runs every file in parallel.
+  }, 30_000);
 
   it("stores envelope, BLAKE3 hash, nonce and epoch in Neon; no object storage, no guest details anywhere", async () => {
     const { createSealedInquiry } = await import("./inquiry.server");
