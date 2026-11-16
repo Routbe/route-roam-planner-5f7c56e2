@@ -239,14 +239,16 @@ end $function$;
 create or replace function public.rout_ws_group_member_key(p_ws uuid, p_epoch integer)
  returns jsonb language sql stable security definer set search_path = pg_catalog, pg_temp
 as $function$
-  select pg_catalog.jsonb_build_object('ok', true, 'envelope', m.envelope, 'kid', m.kid, 'memberRef', m.member_ref)
-    from public.workspace_member_keys m
-   where m.workspace_id = p_ws and m.epoch = p_epoch
-     and m.member_user_id = public.rout_current_user_id()
-     and exists (select 1 from public.workspace_members x
-                  where x.workspace_id = p_ws and x.user_id = m.member_user_id
-                    and x.role::text in ('owner', 'admin'))
-   limit 1
+  select pg_catalog.coalesce(
+    (select pg_catalog.jsonb_build_object('ok', true, 'envelope', m.envelope, 'kid', m.kid, 'memberRef', m.member_ref)
+       from public.workspace_member_keys m
+      where m.workspace_id = p_ws and m.epoch = p_epoch
+        and m.member_user_id = public.rout_current_user_id()
+        and exists (select 1 from public.workspace_members x
+                     where x.workspace_id = p_ws and x.user_id = m.member_user_id
+                       and x.role::text in ('owner', 'admin'))
+      limit 1),
+    pg_catalog.jsonb_build_object('ok', false, 'reason', 'none'))
 $function$;
 
 -- Managers: the key history and, per epoch, which managers still have no envelope.
@@ -454,18 +456,20 @@ as $function$
 $function$;
 
 -- The visitor's private answer, found by the hash of their own token. The browser still needs
--- the token itself to open the envelope, so this row is useless to anyone else.
+-- the token itself to open the envelope, so this row is useless to anyone else. Always one
+-- answer object back, so a caller cannot tell "no such token" from "no answer yet" by row count.
 create or replace function public.rout_ws_answer_fetch(p_token_hash bytea)
  returns jsonb language sql stable security definer set search_path = pg_catalog, pg_temp
 as $function$
-  select case when q.id is null then pg_catalog.jsonb_build_object('ok', false, 'reason', 'not_found')
-    else pg_catalog.jsonb_build_object('ok', true, 'status', q.status, 'envelope',
-      (select r.envelope from public.workspace_question_replies r where r.question_id = q.id),
-      'workspaceName', w.name, 'slug', w.slug) end
-    from public.workspace_questions q
-    join public.workspaces w on w.id = q.workspace_id
-   where q.token_hash = p_token_hash
-   limit 1
+  select pg_catalog.coalesce(
+    (select pg_catalog.jsonb_build_object('ok', true, 'status', q.status,
+             'envelope', (select r.envelope from public.workspace_question_replies r where r.question_id = q.id),
+             'workspaceName', w.name, 'slug', w.slug)
+       from public.workspace_questions q
+       join public.workspaces w on w.id = q.workspace_id
+      where q.token_hash = p_token_hash
+      limit 1),
+    pg_catalog.jsonb_build_object('ok', false, 'reason', 'not_found'))
 $function$;
 
 -- --------------------------------------------------------------------------- function rights
