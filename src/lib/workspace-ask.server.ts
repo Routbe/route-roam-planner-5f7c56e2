@@ -1,5 +1,5 @@
 /**
- * Anonymous workspace questions (db-pending/0285). The browser seals everything; this module
+ * Anonymous workspace questions (db/0285). The browser seals everything; this module
  * verifies the Hashcash proof and envelope shape, then hands ciphertext to the definers.
  * Before 0285 is applied every call answers "unavailable".
  */

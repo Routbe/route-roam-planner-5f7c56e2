@@ -1133,7 +1133,7 @@ const coreHandlers: CoreHandlers = {
     }
   },
 
-  // ---- Workspace group encryption (db-pending/0285, workspace-seal.ts) ----
+  // ---- Workspace group encryption (db/0285, workspace-seal.ts) ----
 
   /**
    * A workspace's own key pair for one epoch. The secret half leaves the worker only inside

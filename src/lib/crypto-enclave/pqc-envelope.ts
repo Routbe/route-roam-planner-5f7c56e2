@@ -12,7 +12,7 @@
  *   4   1    suite (1 = this construction)
  *   5   1    token kind (1 vtk, 2 vcc, 3 mpc, 4 sdm; booking blobs 5 bkh, 6 bkg; 7 opk; 8 pak;
  *            9 hsk host ratchet state SK_t || epoch, member device only, Stap 7f / db/0273;
- *            10 wsk workspace key, 11 wq workspace question, 12 wa workspace answer, db-pending/0285)
+ *            10 wsk workspace key, 11 wq workspace question, 12 wa workspace answer, db/0285)
  *   6   1    key holder (1 server vault, 2 member device, 3 shard factor, 4 booking guest)
  *   7   16   recipient key id = SHA-256("rout.rve1.kid" || publicKey)[0..16)
  *   23  1600 hybrid KEM ciphertext (ML-KEM-1024 1568 || X25519 32)
@@ -60,7 +60,7 @@ export type SystemEnvelopeKind = (typeof SYSTEM_ENVELOPE_KINDS)[number];
 export const HOST_KEY_ENVELOPE_KINDS = ["hsk"] as const;
 export type HostKeyEnvelopeKind = (typeof HOST_KEY_ENVELOPE_KINDS)[number];
 /**
- * Workspace group encryption (db-pending/0285): `wsk` carries the workspace's own key sealed
+ * Workspace group encryption (db/0285): `wsk` carries the workspace's own key sealed
  * to one manager's device, `wq` one anonymous question sealed to that workspace key, and `wa`
  * the private answer sealed back to the visitor's own reply key.
  */

@@ -110,7 +110,7 @@ export interface EnclaveOps {
     res: { payloadId: string; hosts: { ref: string; envelope: Uint8Array }[]; pow: { nonce: string; epoch: number } | null };
   };
 
-  // ---- Workspace group encryption (db-pending/0285, workspace-seal.ts) ----
+  // ---- Workspace group encryption (db/0285, workspace-seal.ts) ----
 
   /**
    * A workspace's own key pair for one epoch, sealed to the manager who creates it. The

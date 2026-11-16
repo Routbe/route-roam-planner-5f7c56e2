@@ -96,7 +96,7 @@ let db: PGlite;
 
 beforeAll(async () => {
   db = await replayDb();
-  await applyPending(db, "0285_workspace_group_encryption.sql");
+  // 0285 is part of db/ now, so replayDb already applied it.
   const users = [OWNER, ADMIN, EDITOR, DEVELOPER, VIEWER, OUTSIDER];
   await db.exec(`
     insert into public.users (id, email) values ${users.map((id, i) => `('${id}', 'g${i}@example.test')`).join(", ")};
