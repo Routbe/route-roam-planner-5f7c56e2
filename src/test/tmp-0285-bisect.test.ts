@@ -27,6 +27,12 @@ function splitStatements(sql: string): string[] {
       i += 1;
       continue;
     }
+    if (ch === "-" && sql.startsWith("--", i)) {
+      const nl = sql.indexOf("\n", i);
+      i = nl < 0 ? sql.length : nl + 1;
+      cur += "\n";
+      continue;
+    }
     if (ch === "'") {
       quote = "'";
       cur += ch;
