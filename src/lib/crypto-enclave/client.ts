@@ -357,6 +357,11 @@ export const enclave = {
     seal: (hosts: { ref: string; publicKey: Uint8Array }[], payload: BookingPayload, pow?: { purpose: "booking" | "inquiry" }) =>
       callEnclave("booking.seal", { hosts: hosts.map((h) => ({ ref: h.ref, publicKey: h.publicKey.slice() })), payload, ...(pow ? { pow } : {}) }),
   },
+  workspaceAsk: {
+    seal: (workspaceId: string, epoch: number, workspacePublicKey: Uint8Array, text: string) =>
+      callEnclave("wsQuestion.seal", { workspaceId, epoch, workspacePublicKey: workspacePublicKey.slice(), text }),
+    openAnswer: (token: string, envelope: Uint8Array) => callEnclave("wsAnswer.open", { token, envelope }, moved(envelope)),
+  },
   hash: {
     sha256Hex: (text: string) => callEnclave("hash.sha256Hex", { text }),
   },
