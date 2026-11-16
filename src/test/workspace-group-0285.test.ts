@@ -23,7 +23,7 @@ import { sha256 } from "@noble/hashes/sha2.js";
 import { randomBytes } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { applyPending, replayDb } from "../../scripts/formal-rls/replay";
+import { replayDb } from "../../scripts/formal-rls/replay";
 import { b64uDecode, b64uEncode } from "@/lib/booking-engine/sealed-booking";
 
 const OWNER = "00000000-0000-4000-8000-0000000000a1";
