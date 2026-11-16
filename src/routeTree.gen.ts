@@ -351,6 +351,7 @@ import { Route as UUsernameDonateRouteImport } from './routes/u.$username_.donat
 import { Route as UUsernameFeedbackRouteImport } from './routes/u.$username_.feedback'
 import { Route as UUsernameLiveRouteImport } from './routes/u.$username_.live'
 import { Route as UUsernameTipRouteImport } from './routes/u.$username_.tip'
+import { Route as WSlugAskRouteImport } from './routes/w.$slug_.ask'
 import { Route as WSlugFeedbackRouteImport } from './routes/w.$slug_.feedback'
 import { Route as WSlugSupportRouteImport } from './routes/w.$slug_.support'
 import { Route as AuthenticatedConsoleAppsIndexRouteImport } from './routes/_authenticated/console.apps.index'
@@ -2218,6 +2219,11 @@ const UUsernameTipRoute = UUsernameTipRouteImport.update({
   path: '/u/$username/tip',
   getParentRoute: () => rootRouteImport,
 } as any)
+const WSlugAskRoute = WSlugAskRouteImport.update({
+  id: '/w/$slug_/ask',
+  path: '/w/$slug/ask',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const WSlugFeedbackRoute = WSlugFeedbackRouteImport.update({
   id: '/w/$slug_/feedback',
   path: '/w/$slug/feedback',
@@ -3094,6 +3100,7 @@ export interface FileRoutesByFullPath {
   '/u/$username/feedback': typeof UUsernameFeedbackRoute
   '/u/$username/live': typeof UUsernameLiveRoute
   '/u/$username/tip': typeof UUsernameTipRoute
+  '/w/$slug/ask': typeof WSlugAskRoute
   '/w/$slug/feedback': typeof WSlugFeedbackRoute
   '/w/$slug/support': typeof WSlugSupportRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
@@ -3516,6 +3523,7 @@ export interface FileRoutesByTo {
   '/u/$username/feedback': typeof UUsernameFeedbackRoute
   '/u/$username/live': typeof UUsernameLiveRoute
   '/u/$username/tip': typeof UUsernameTipRoute
+  '/w/$slug/ask': typeof WSlugAskRoute
   '/w/$slug/feedback': typeof WSlugFeedbackRoute
   '/w/$slug/support': typeof WSlugSupportRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
@@ -3955,6 +3963,7 @@ export interface FileRoutesById {
   '/u/$username_/feedback': typeof UUsernameFeedbackRoute
   '/u/$username_/live': typeof UUsernameLiveRoute
   '/u/$username_/tip': typeof UUsernameTipRoute
+  '/w/$slug_/ask': typeof WSlugAskRoute
   '/w/$slug_/feedback': typeof WSlugFeedbackRoute
   '/w/$slug_/support': typeof WSlugSupportRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
@@ -4395,6 +4404,7 @@ export interface FileRouteTypes {
     | '/u/$username/feedback'
     | '/u/$username/live'
     | '/u/$username/tip'
+    | '/w/$slug/ask'
     | '/w/$slug/feedback'
     | '/w/$slug/support'
     | '/admin/'
@@ -4817,6 +4827,7 @@ export interface FileRouteTypes {
     | '/u/$username/feedback'
     | '/u/$username/live'
     | '/u/$username/tip'
+    | '/w/$slug/ask'
     | '/w/$slug/feedback'
     | '/w/$slug/support'
     | '/admin'
@@ -5255,6 +5266,7 @@ export interface FileRouteTypes {
     | '/u/$username_/feedback'
     | '/u/$username_/live'
     | '/u/$username_/tip'
+    | '/w/$slug_/ask'
     | '/w/$slug_/feedback'
     | '/w/$slug_/support'
     | '/_authenticated/admin/'
@@ -5528,6 +5540,7 @@ export interface RootRouteChildren {
   UUsernameFeedbackRoute: typeof UUsernameFeedbackRoute
   UUsernameLiveRoute: typeof UUsernameLiveRoute
   UUsernameTipRoute: typeof UUsernameTipRoute
+  WSlugAskRoute: typeof WSlugAskRoute
   WSlugFeedbackRoute: typeof WSlugFeedbackRoute
   WSlugSupportRoute: typeof WSlugSupportRoute
   ApiAgentProfileDraftRoute: typeof ApiAgentProfileDraftRoute
@@ -7993,6 +8006,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof UUsernameTipRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/w/$slug_/ask': {
+      id: '/w/$slug_/ask'
+      path: '/w/$slug/ask'
+      fullPath: '/w/$slug/ask'
+      preLoaderRoute: typeof WSlugAskRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/w/$slug_/feedback': {
       id: '/w/$slug_/feedback'
       path: '/w/$slug/feedback'
@@ -9455,6 +9475,7 @@ const rootRouteChildren: RootRouteChildren = {
   UUsernameFeedbackRoute: UUsernameFeedbackRoute,
   UUsernameLiveRoute: UUsernameLiveRoute,
   UUsernameTipRoute: UUsernameTipRoute,
+  WSlugAskRoute: WSlugAskRoute,
   WSlugFeedbackRoute: WSlugFeedbackRoute,
   WSlugSupportRoute: WSlugSupportRoute,
   ApiAgentProfileDraftRoute: ApiAgentProfileDraftRoute,

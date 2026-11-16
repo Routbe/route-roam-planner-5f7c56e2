@@ -4,10 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { enclave } from "@/lib/crypto-enclave/client";
 import { b64uDecode, b64uEncode } from "@/lib/booking-engine/sealed-booking";
-import { getWsAnswer, submitWsQuestion } from "@/lib/workspace-ask.functions";
-import type { WsAskKey, WsFaqItem } from "@/lib/workspace-ask.server";
+import { getWsAnswer, getWsAskPage, submitWsQuestion } from "@/lib/workspace-ask.functions";
 
-type Props = { data: { key: WsAskKey | null; faq: WsFaqItem[] }; slug: string };
+type Props = { data: Awaited<ReturnType<typeof getWsAskPage>>; slug: string };
 type View =
   | { kind: "form" }
   | { kind: "sending" }
