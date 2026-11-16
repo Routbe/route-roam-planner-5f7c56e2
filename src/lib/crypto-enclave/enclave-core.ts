@@ -34,7 +34,21 @@ import type { EnclaveErrorCode, EnclaveOp, EnclaveOps } from "./protocol";
 import { EnclaveFailure, fail } from "./enclave-failure";
 import { beginOperation, endOperation } from "./operation-control";
 import { passwordHandlers, type PasswordOp } from "./password-enclave";
-import { ENVELOPE_MAX_BYTES, ENVELOPE_MAX_PLAINTEXT, generateRecipientKeys, keyId, openEnvelope, PUBLIC_KEY_BYTES, publicKeyOf, sealEnvelope } from "./pqc-envelope";
+import { ENVELOPE_MAX_BYTES, ENVELOPE_MAX_PLAINTEXT, generateRecipientKeys, keyId, openEnvelope, PUBLIC_KEY_BYTES, publicKeyOf, sealEnvelope, type RecipientKeys } from "./pqc-envelope";
+import {
+  newWorkspaceToken,
+  openWorkspaceAnswer,
+  openWorkspaceKey,
+  openWorkspaceQuestion,
+  sealWorkspaceAnswer,
+  sealWorkspaceKey,
+  sealWorkspaceQuestion,
+  WORKSPACE_ANSWER_MAX,
+  WORKSPACE_QUESTION_MAX,
+  workspaceGroupKeys,
+  workspaceReplyKeys,
+  workspaceTokenHash,
+} from "./workspace-seal";
 import { loadRve1Key, rve1SeedAad, saveRve1Key } from "./rve1-key-store";
 import { solveSealedPow } from "./sealed-pow";
 import { BookingSealError, hostBookingKeys, normalizePayload, openBookingPayload, sealBookingPayload, type BookingPayload } from "./booking-seal";
