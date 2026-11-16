@@ -75,8 +75,8 @@
   - [x] 12 formaten + liggend, geen overflow/afsnijding/CLS, contrast AAA, tikdoelen 44px, animaties alleen transform/opacity
   - [x] Per pagina titels/omschrijvingen NL/EN/FR/DE + eigen deelafbeelding
 - [ ] Fase B: database (grootboek, agendakoppelingen, routering, locaties, annuleringsbeleid) — Neon pas na GO
-  - [ ] B1: booking_events — onveranderlijk grootboek, hash-keten + server-ondertekening, overzicht ↔ grootboek-controle (db-pending/0284, PGlite-test groen)
-    - [x] B1-bewijzen: fast-check (3 × 10.000 + 1.000 runs) en uitputtende modelcontrole tot diepte 3 tegen de SQL — wacht op live-GO eigenaar
+  - [x] B1: booking_events — onveranderlijk grootboek, hash-keten + server-ondertekening, overzicht ↔ grootboek-controle (db/0284 live op Neon 2026-11-16 12:15 UTC, nagekeken)
+    - [x] B1-bewijzen: fast-check (3 × 10.000 + 1.000 runs) en uitputtende modelcontrole tot diepte 3 tegen de SQL
   - [ ] B2: agendakoppelingen Google/Microsoft/CalDAV — sleutels alleen als RVE1-envelop in vault_enclave (alleen test)
   - [ ] B3: publieke kant alleen anonieme tijdvakken/bitmasker (bevestigen + test)
   - [ ] B4: MCP-hulpmiddelen: vrije tijden lezen, reservering voorbereiden; bevestigen alleen na passkey/step-up van een mens
@@ -316,3 +316,11 @@
 - [ ] /w/<werkruimte>/ask: versleuteld voor eigenaar + beheerders, per vraag openbaar of privé antwoorden — volgende stap (nieuwe worker-bewerkingen + migratie)
 - [x] /w/<werkruimte>/support: gebouwd (IBAN + eigen Stripe/Mollie van de werkruimte; Didit-eigenaar of geverifieerd domein)
 - [ ] db/0283 (steunpagina werkruimte) live op Neon: wacht op GO van de eigenaar
+
+## Stap 2 — groepsversleuteling werkruimte + vragenpagina (GO 2026-11-16)
+- [x] Fase 1: 0284 live op Neon (één transactie, checksum gelijk, keten/rechten/triggers/snapshot nagekeken)
+- [ ] Fase 1: volledige testsuite groen
+- [ ] Fase 1: productie opnieuw deployen zodat de health-probe 0284 meldt — eigenaar
+- [ ] Fase 2: db-pending/0285_workspace_group_encryption.sql (publieke sleutel, enveloppen owner/admin, epoch-rotatie, SECURITY DEFINER-ingangen)
+- [ ] Fase 2: PGlite + fast-check tests voor 0285
+- [ ] Fase 2: /w/:slug/ask (anoniem, RVE1 in de browser, #token=) + inbox met privé/FAQ-antwoord
