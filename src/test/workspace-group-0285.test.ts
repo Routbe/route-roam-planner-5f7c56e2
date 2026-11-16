@@ -33,6 +33,12 @@ const VIEWER = "00000000-0000-4000-8000-0000000000a5";
 const OUTSIDER = "00000000-0000-4000-8000-0000000000a6";
 const WS = "00000000-0000-4000-8000-0000000000d1";
 const SLUG = "ask-club";
+// Two more workspaces, so the flood ceiling and the generated submissions never eat the
+// hourly budget of the pages the other tests need.
+const WS2 = "00000000-0000-4000-8000-0000000000d2";
+const SLUG2 = "flood-club";
+const WS3 = "00000000-0000-4000-8000-0000000000d3";
+const SLUG3 = "probe-club";
 
 const TABLES = ["workspace_keys", "workspace_member_keys", "workspace_ask_settings", "workspace_questions", "workspace_question_replies", "workspace_faq_items"];
 const ENTRY_POINTS = [
@@ -93,7 +99,20 @@ beforeAll(async () => {
       ('${WS}', '${OWNER}', 'owner'), ('${WS}', '${ADMIN}', 'admin'), ('${WS}', '${EDITOR}', 'editor'),
       ('${WS}', '${DEVELOPER}', 'developer'), ('${WS}', '${VIEWER}', 'viewer');
   `);
+  await seedWorkspace(WS2, SLUG2, "Flood Club");
+  await seedWorkspace(WS3, SLUG3, "Probe Club");
 }, 600_000);
+
+/** A second workspace, live from epoch 1 with the ask page switched on. */
+async function seedWorkspace(id: string, slug: string, name: string) {
+  await db.exec(`
+    insert into public.workspaces (id, name, slug) values ('${id}', '${name}', '${slug}');
+    insert into public.workspace_members (workspace_id, user_id, role) values
+      ('${id}', '${OWNER}', 'owner'), ('${id}', '${ADMIN}', 'admin'), ('${id}', '${EDITOR}', 'editor');
+  `);
+  expect(await one(OWNER, `select * from public.rout_ws_group_publish($1, 1, $2, $3)`, [id, publicKey(), kid()])).toMatchObject({ ok: true });
+  expect(await one(OWNER, `select * from public.rout_ws_ask_save($1, true)`, [id])).toBe("ok");
+}
 
 afterAll(async () => { await db?.close(); });
 
@@ -195,16 +214,11 @@ describe("workspace key epochs", () => {
 
   it("publishing a new epoch retires the previous one, and only one stays live", async () => {
     expect(await one(ADMIN, `select * from public.rout_ws_group_publish($1, 2, $2, $3)`, [WS, publicKey(), kid()])).toMatchObject({ ok: true, epoch: 2 });
-    const rows = await as<{ live: number; retired: number }>(OWNER,
-      `select count(*) filter (where status = 'active') live, count(*) filter (where status = 'retired') retired
-         from public.rout_ws_group_state($1) s, pg_catalog.jsonb_array_elements(s->'epochs') e
-         where e->>'status' is not null`, [WS]).catch(() => null);
-    // The state view is the manager's own summary; read it directly for the counts.
+    // The state view is the manager's own summary: it is the only way to see the history.
     const st = await one(OWNER, `select * from public.rout_ws_group_state($1)`, [WS]);
     const epochs = (st?.epochs ?? []) as { epoch: number; status: string }[];
     expect(epochs.map((e) => [e.epoch, e.status]).sort((a, b) => a[0] - b[0])).toEqual([[1, "retired"], [2, "active"]]);
-    expect(epochs.filter((e) => e.status === "active")).toHaveLength(1);
-    expect(rows).toBeNull();  });
+    expect(epochs.filter((e) => e.status === "active")).toHaveLength(1);  });
 
   it("a member envelope is stored only for role owner or admin", async () => {
     for (const [member, role] of [[EDITOR, "editor"], [DEVELOPER, "developer"], [VIEWER, "viewer"], [OUTSIDER, "outsider"]] as const) {
