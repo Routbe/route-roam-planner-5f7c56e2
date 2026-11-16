@@ -592,3 +592,49 @@ describe("bounded model check of the key and question lifecycle", () => {
     return rows.rows[0]?.role ?? null;
   }
 });
+
+// The rollback file is the owner's way out, so it is tested too: it must refuse while there is
+// ciphertext, and it must remove every object -- including the role-revocation trigger.
+describe("rollback of 0285", () => {
+  const sql = readFileSync("db-pending/0285_workspace_group_encryption_rollback.sql", "utf8");
+
+  it("refuses while ciphertext exists and removes every object once it is gone", async () => {
+    await db.exec("begin");
+    await expect(db.exec(sql)).rejects.toThrow(/rollback refused/);
+    await db.exec("rollback");
+    const still = await db.query<{ t: boolean }>(`select (to_regclass('public.workspace_keys') is not null) t`);
+    expect(still.rows[0]?.t).toBe(true);
+
+    await db.exec(`
+      delete from public.workspace_faq_items;
+      delete from public.workspace_question_replies;
+      delete from public.workspace_questions;
+      delete from public.workspace_ask_settings;
+      delete from public.workspace_member_keys;
+      delete from public.workspace_keys;
+    `);
+    await db.exec(sql);
+
+    const tables = await db.query<{ n: number }>(
+      `select count(*)::int n from pg_catalog.pg_class c
+        join pg_catalog.pg_namespace nn on nn.oid = c.relnamespace
+        where nn.nspname = 'public' and c.relname in
+          ('workspace_keys', 'workspace_member_keys', 'workspace_ask_settings',
+           'workspace_questions', 'workspace_question_replies', 'workspace_faq_items')`);
+    expect(tables.rows[0]?.n).toBe(0);
+    const functions = await db.query<{ n: number }>(
+      `select count(*)::int n from pg_catalog.pg_proc p
+        join pg_catalog.pg_namespace nn on nn.oid = p.pronamespace
+        where nn.nspname = 'public' and p.proname in (
+          'rout_ws_group_manager', 'rout_ws_group_envelope_ok', 'rout_ws_group_epoch_ok',
+          'rout_ws_group_active', 'rout_ws_group_member_revoke', 'rout_ws_group_publish',
+          'rout_ws_group_member_store', 'rout_ws_group_member_key', 'rout_ws_group_state',
+          'rout_ws_ask_save', 'rout_public_ws_ask_key', 'rout_ws_question_create',
+          'rout_ws_question_list', 'rout_ws_question_reply', 'rout_ws_question_publish',
+          'rout_ws_question_decline', 'rout_public_ws_faq', 'rout_ws_answer_fetch')`);
+    expect(functions.rows[0]?.n).toBe(0);
+    const trigger = await db.query<{ n: number }>(
+      `select count(*)::int n from pg_catalog.pg_trigger where tgname = 'workspace_members_role_revoke_ws_keys'`);
+    expect(trigger.rows[0]?.n).toBe(0);
+  }, 60_000);
+});
