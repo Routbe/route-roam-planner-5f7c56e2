@@ -11,7 +11,8 @@
  *   0   4    magic "RVE1" (checked by db/0221)
  *   4   1    suite (1 = this construction)
  *   5   1    token kind (1 vtk, 2 vcc, 3 mpc, 4 sdm; booking blobs 5 bkh, 6 bkg; 7 opk; 8 pak;
- *            9 hsk host ratchet state SK_t || epoch, member device only, Stap 7f / db/0273)
+ *            9 hsk host ratchet state SK_t || epoch, member device only, Stap 7f / db/0273;
+ *            10 wsk workspace key, 11 wq workspace question, 12 wa workspace answer, db-pending/0285)
  *   6   1    key holder (1 server vault, 2 member device, 3 shard factor, 4 booking guest)
  *   7   16   recipient key id = SHA-256("rout.rve1.kid" || publicKey)[0..16)
  *   23  1600 hybrid KEM ciphertext (ML-KEM-1024 1568 || X25519 32)
@@ -58,7 +59,19 @@ export type SystemEnvelopeKind = (typeof SYSTEM_ENVELOPE_KINDS)[number];
 /** Forward-secure host booking key state (Stap 7f, forward-secure.ts): SK_t || epoch. */
 export const HOST_KEY_ENVELOPE_KINDS = ["hsk"] as const;
 export type HostKeyEnvelopeKind = (typeof HOST_KEY_ENVELOPE_KINDS)[number];
-export type EnvelopeKind = OpaqueTokenKind | BookingEnvelopeKind | SystemEnvelopeKind | HostKeyEnvelopeKind;
+/**
+ * Workspace group encryption (db-pending/0285): `wsk` carries the workspace's own key sealed
+ * to one manager's device, `wq` one anonymous question sealed to that workspace key, and `wa`
+ * the private answer sealed back to the visitor's own reply key.
+ */
+export const WORKSPACE_ENVELOPE_KINDS = ["wsk", "wq", "wa"] as const;
+export type WorkspaceEnvelopeKind = (typeof WORKSPACE_ENVELOPE_KINDS)[number];
+export type EnvelopeKind =
+  | OpaqueTokenKind
+  | BookingEnvelopeKind
+  | SystemEnvelopeKind
+  | HostKeyEnvelopeKind
+  | WorkspaceEnvelopeKind;
 
 /** Owner-confirmed policy: who may ever decrypt each kind. */
 export const KIND_KEY_HOLDER: Readonly<Record<OpaqueTokenKind, KeyHolder>> = Object.freeze({
@@ -89,17 +102,29 @@ export const HOST_KEY_KIND_KEY_HOLDER: Readonly<Record<HostKeyEnvelopeKind, KeyH
   hsk: "member_device",
 });
 
+/**
+ * Owner decision (step 2, 2026-11-16): the workspace key and every question filed against it
+ * open only on a manager's own device -- never in the server vault. A private answer opens
+ * only on the visitor's own reply key, which lives in their link fragment.
+ */
+export const WORKSPACE_KIND_KEY_HOLDER: Readonly<Record<WorkspaceEnvelopeKind, KeyHolder>> = Object.freeze({
+  wsk: "member_device",
+  wq: "member_device",
+  wa: "booking_guest",
+});
+
 function holderOf(kind: EnvelopeKind): KeyHolder | undefined {
   if (Object.hasOwn(KIND_KEY_HOLDER, kind)) return KIND_KEY_HOLDER[kind as OpaqueTokenKind];
   if (Object.hasOwn(SYSTEM_KIND_KEY_HOLDER, kind)) return SYSTEM_KIND_KEY_HOLDER[kind as SystemEnvelopeKind];
   if (Object.hasOwn(BOOKING_KIND_KEY_HOLDER, kind)) return BOOKING_KIND_KEY_HOLDER[kind as BookingEnvelopeKind];
   if (Object.hasOwn(HOST_KEY_KIND_KEY_HOLDER, kind)) return HOST_KEY_KIND_KEY_HOLDER[kind as HostKeyEnvelopeKind];
+  if (Object.hasOwn(WORKSPACE_KIND_KEY_HOLDER, kind)) return WORKSPACE_KIND_KEY_HOLDER[kind as WorkspaceEnvelopeKind];
   return undefined;
 }
 
 const MAGIC = Uint8Array.of(0x52, 0x56, 0x45, 0x31); // "RVE1"
 const SUITE = 1;
-const KIND_CODE: Readonly<Record<EnvelopeKind, number>> = Object.freeze({ vtk: 1, vcc: 2, mpc: 3, sdm: 4, bkh: 5, bkg: 6, opk: 7, pak: 8, hsk: 9 });
+const KIND_CODE: Readonly<Record<EnvelopeKind, number>> = Object.freeze({ vtk: 1, vcc: 2, mpc: 3, sdm: 4, bkh: 5, bkg: 6, opk: 7, pak: 8, hsk: 9, wsk: 10, wq: 11, wa: 12 });
 const HOLDER_CODE: Readonly<Record<KeyHolder, number>> = Object.freeze({ server_vault: 1, member_device: 2, shard_factor: 3, booking_guest: 4 });
 
 const KID_LEN = 16;

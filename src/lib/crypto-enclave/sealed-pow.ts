@@ -15,7 +15,7 @@
  */
 import { blake3 } from "@noble/hashes/blake3.js";
 
-export type SealedPowPurpose = "booking" | "inquiry";
+export type SealedPowPurpose = "booking" | "inquiry" | "wsask";
 export const SEALED_POW_DEFAULT_BITS = 16;
 export const SEALED_POW_MIN_BITS = 12;
 export const SEALED_POW_MAX_BITS = 24;
@@ -28,7 +28,7 @@ export const SEALED_NONCE_HEX = /^[0-9a-f]{16}$/;
 const enc = new TextEncoder();
 const BIND_LABEL = enc.encode("rout.sealed.binding.v1");
 const POW_LABEL = enc.encode("rout.pow.sealed.v1");
-const PURPOSE: Record<SealedPowPurpose, number> = { booking: 1, inquiry: 2 };
+const PURPOSE: Record<SealedPowPurpose, number> = { booking: 1, inquiry: 2, wsask: 3 };
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 export class SealedPowError extends Error {
