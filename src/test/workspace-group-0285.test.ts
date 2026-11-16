@@ -223,8 +223,10 @@ describe("workspace key epochs", () => {
     // The state view is the manager's own summary: it is the only way to see the history.
     const st = await one(OWNER, `select * from public.rout_ws_group_state($1)`, [WS]);
     const epochs = (st?.epochs ?? []) as { epoch: number; status: string }[];
-    expect(epochs.map((e) => [e.epoch, e.status]).sort((a, b) => a[0] - b[0])).toEqual([[1, "retired"], [2, "active"]]);
-    expect(epochs.filter((e) => e.status === "active")).toHaveLength(1);  });
+    const pairs = epochs.map((e) => [e.epoch, e.status] as [number, string]);
+    expect(pairs.sort((a, b) => a[0] - b[0])).toEqual([[1, "retired"], [2, "active"]]);
+    expect(epochs.filter((e) => e.status === "active")).toHaveLength(1);
+  });
 
   it("a member envelope is stored only for role owner or admin", async () => {
     for (const [member, role] of [[EDITOR, "editor"], [DEVELOPER, "developer"], [VIEWER, "viewer"], [OUTSIDER, "outsider"]] as const) {
