@@ -1133,7 +1133,7 @@ const coreHandlers: CoreHandlers = {
     }
   },
 
-  // ---- Workspace group encryption (db-pending/0285, workspace-seal.ts) ----
+  // ---- Workspace group encryption (db/0285, workspace-seal.ts) ----
 
   /**
    * A workspace's own key pair for one epoch. The secret half leaves the worker only inside
@@ -1156,7 +1156,7 @@ const coreHandlers: CoreHandlers = {
       };
     } catch (e) {
       if (e instanceof EnclaveFailure) throw e;
-      fail("invalid_input");
+      return fail("invalid_input");
     } finally {
       wipe(keys.secretKey);
     }
@@ -1187,7 +1187,7 @@ const coreHandlers: CoreHandlers = {
       try {
         return openWorkspaceKey({ workspaceId: ws, epoch, memberRef: ownRef, envelope: ownEnv, deviceSecretKey: seed });
       } catch {
-        fail("decrypt_failed");
+        return fail("decrypt_failed");
       }
     });
     try {
@@ -1199,7 +1199,7 @@ const coreHandlers: CoreHandlers = {
       };
     } catch (e) {
       if (e instanceof EnclaveFailure) throw e;
-      fail("invalid_input");
+      return fail("invalid_input");
     } finally {
       wipe(secret);
     }
@@ -1230,7 +1230,7 @@ const coreHandlers: CoreHandlers = {
       try {
         return openWorkspaceKey({ workspaceId: ws, epoch, memberRef: ownRef, envelope: ownEnv, deviceSecretKey: seed });
       } catch {
-        fail("decrypt_failed");
+        return fail("decrypt_failed");
       }
     });
     try {
@@ -1277,7 +1277,7 @@ const coreHandlers: CoreHandlers = {
       };
     } catch (e) {
       if (e instanceof EnclaveFailure) throw e;
-      fail("invalid_input");
+      return fail("invalid_input");
     } finally {
       wipe(token, keys?.secretKey);
     }
@@ -1294,7 +1294,7 @@ const coreHandlers: CoreHandlers = {
       return { envelope: sealed.envelope, hash: sealed.hash };
     } catch (e) {
       if (e instanceof EnclaveFailure) throw e;
-      fail("invalid_input");
+      return fail("invalid_input");
     }
   },
 
@@ -1311,7 +1311,7 @@ const coreHandlers: CoreHandlers = {
       return openWorkspaceAnswer({ token: secret, envelope: env });
     } catch (e) {
       if (e instanceof EnclaveFailure) throw e;
-      fail("decrypt_failed");
+      return fail("decrypt_failed");
     } finally {
       wipe(secret);
     }

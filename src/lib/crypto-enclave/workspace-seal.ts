@@ -1,8 +1,8 @@
 /**
- * Workspace group encryption (db-pending/0285).
+ * Workspace group encryption (db/0285).
  *
  * A workspace owns one RVE1 key pair per epoch -- the *workspace key*. Its public half is
- * published (`workspace_keys`, db-pending/0285) so an anonymous visitor can seal a question
+ * published (`workspace_keys`, db/0285) so an anonymous visitor can seal a question
  * to it; its secret half never leaves a manager's device: it travels only as a `wsk` envelope,
  * the workspace secret sealed to one manager's own device key.
  *
@@ -35,7 +35,7 @@ const dec = new TextDecoder("utf-8", { fatal: true });
 export const WORKSPACE_TOKEN_BYTES = 32;
 /** Fragment parameter the ask page writes: `#token=<43 base64url characters>`. */
 export const WORKSPACE_TOKEN_PARAM = "token";
-/** Question and answer lengths, matching the publish checks of db-pending/0285. */
+/** Question and answer lengths, matching the publish checks of db/0285. */
 export const WORKSPACE_QUESTION_MAX = 2000;
 export const WORKSPACE_ANSWER_MAX = 4000;
 export const WORKSPACE_ENVELOPE_KINDS = ["wsk", "wq", "wa"] as const;
