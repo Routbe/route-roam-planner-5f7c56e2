@@ -319,7 +319,7 @@
 
 ## Stap 2 — groepsversleuteling werkruimte + vragenpagina (GO 2026-11-16)
 - [x] Fase 1: 0284 live op Neon (één transactie, checksum gelijk, keten/rechten/triggers/snapshot nagekeken)
-- [ ] Fase 1: volledige testsuite groen
+- [x] Fase 1: volledige testsuite groen (544 bestanden, 3343 tests; 1 trage test robuust gemaakt)
 - [ ] Fase 1: productie opnieuw deployen zodat de health-probe 0284 meldt — eigenaar
 - [ ] Fase 2: db-pending/0285_workspace_group_encryption.sql (publieke sleutel, enveloppen owner/admin, epoch-rotatie, SECURITY DEFINER-ingangen)
 - [ ] Fase 2: PGlite + fast-check tests voor 0285
