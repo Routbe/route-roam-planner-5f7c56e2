@@ -19,7 +19,7 @@ const TOKEN_RE = /(?:^|&)token=([A-Za-z0-9_-]{43})(?:&|$)/;
 async function sha256B64u(token: string): Promise<string> {
   const raw = b64uDecode(token);
   if (!raw) throw new Error("invalid");
-  const d = new Uint8Array(await crypto.subtle.digest("SHA-256", raw));
+  const d = new Uint8Array(await crypto.subtle.digest("SHA-256", raw as Uint8Array<ArrayBuffer>));
   raw.fill(0);
   return b64uEncode(d);
 }
