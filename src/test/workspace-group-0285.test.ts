@@ -600,6 +600,10 @@ describe("rollback of 0285", () => {
   const sql = readFileSync("db-pending/0285_workspace_group_encryption_rollback.sql", "utf8");
 
   it("refuses while ciphertext exists and removes every object once it is gone", async () => {
+    // A live workspace key is ciphertext only the workspace's own members can open, so the
+    // rollback has to refuse while such a row is on the table.
+    expect(await one(OWNER, `select * from public.rout_ws_group_publish($1, 1, $2, $3)`,
+      [WS, publicKey(), kid()])).toMatchObject({ ok: true });
     await db.exec("begin");
     await expect(db.exec(sql)).rejects.toThrow(/rollback refused/);
     await db.exec("rollback");
