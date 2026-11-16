@@ -196,7 +196,7 @@ begin
      or p_kid is null or p_kid !~ '^[A-Za-z0-9_-]{22}$' then
     return pg_catalog.jsonb_build_object('ok', false, 'reason', 'invalid');
   end if;
-  select pg_catalog.coalesce(pg_catalog.max(epoch), 0) into v_max from public.workspace_keys where workspace_id = p_ws;
+  select coalesce(pg_catalog.max(epoch), 0) into v_max from public.workspace_keys where workspace_id = p_ws;
   if p_epoch <> v_max + 1 then return pg_catalog.jsonb_build_object('ok', false, 'reason', 'epoch'); end if;
   update public.workspace_keys set status = 'retired', retired_at = pg_catalog.now()
    where workspace_id = p_ws and status = 'active';
@@ -239,7 +239,7 @@ end $function$;
 create or replace function public.rout_ws_group_member_key(p_ws uuid, p_epoch integer)
  returns jsonb language sql stable security definer set search_path = pg_catalog, pg_temp
 as $function$
-  select pg_catalog.coalesce(
+  select coalesce(
     (select pg_catalog.jsonb_build_object('ok', true, 'envelope', m.envelope, 'kid', m.kid, 'memberRef', m.member_ref)
        from public.workspace_member_keys m
       where m.workspace_id = p_ws and m.epoch = p_epoch
@@ -461,7 +461,7 @@ $function$;
 create or replace function public.rout_ws_answer_fetch(p_token_hash bytea)
  returns jsonb language sql stable security definer set search_path = pg_catalog, pg_temp
 as $function$
-  select pg_catalog.coalesce(
+  select coalesce(
     (select pg_catalog.jsonb_build_object('ok', true, 'status', q.status,
              'envelope', (select r.envelope from public.workspace_question_replies r where r.question_id = q.id),
              'workspaceName', w.name, 'slug', w.slug)
