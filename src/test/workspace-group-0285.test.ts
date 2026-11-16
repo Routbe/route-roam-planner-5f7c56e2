@@ -61,6 +61,7 @@ const INTERNALS = [
   "rout_ws_group_envelope_ok(text, text)",
   "rout_ws_group_epoch_ok(integer)",
   "rout_ws_group_active(uuid)",
+  "rout_ws_group_member_revoke()",
 ];
 
 // RVE1 headers: magic, suite 1, kind. The new kinds of 0285 (pqc-envelope.ts codes 10/11/12).
@@ -277,6 +278,24 @@ describe("workspace key epochs", () => {
     expect(await one(OWNER, `select * from public.rout_ws_group_member_store($1, 3, $2, $3, $4, $5)`,
       [WS, ADMIN, "00000000-0000-4000-8000-0000000000f2", kid(), envelope("wsk")])).toMatchObject({ ok: true });
     expect(await one(ADMIN, `select * from public.rout_ws_group_member_key($1, 3)`, [WS])).toMatchObject({ ok: true });
+  });
+
+  it("losing the manager role takes every envelope with it", async () => {
+    // The admin holds epoch 3's envelope. Demotion deletes it on the spot, and the key does
+    // not come back when the role does: only a manager can hand it out again.
+    expect(await one(ADMIN, `select * from public.rout_ws_group_member_key($1, 3)`, [WS])).toMatchObject({ ok: true });
+    await db.exec(`update public.workspace_members set role = 'editor' where workspace_id = '${WS}' and user_id = '${ADMIN}'`);
+    expect(await one(ADMIN, `select * from public.rout_ws_group_member_key($1, 3)`, [WS])).toMatchObject({ reason: "none" });
+    await db.exec(`update public.workspace_members set role = 'admin' where workspace_id = '${WS}' and user_id = '${ADMIN}'`);
+    expect(await one(ADMIN, `select * from public.rout_ws_group_member_key($1, 3)`, [WS])).toMatchObject({ reason: "none" });
+    expect(await one(OWNER, `select * from public.rout_ws_group_member_store($1, 3, $2, $3, $4, $5)`,
+      [WS, ADMIN, "00000000-0000-4000-8000-0000000000f2", kid(), envelope("wsk")])).toMatchObject({ ok: true });
+    expect(await one(ADMIN, `select * from public.rout_ws_group_member_key($1, 3)`, [WS])).toMatchObject({ ok: true });
+    // Leaving the workspace deletes the envelope the same way.
+    await db.exec(`delete from public.workspace_members where workspace_id = '${WS}' and user_id = '${ADMIN}'`);
+    expect(await one(ADMIN, `select * from public.rout_ws_group_member_key($1, 3)`, [WS])).toMatchObject({ reason: "none" });
+    await db.exec(`insert into public.workspace_members (workspace_id, user_id, role) values ('${WS}', '${ADMIN}', 'admin')`);
+    expect(await one(ADMIN, `select * from public.rout_ws_group_member_key($1, 3)`, [WS])).toMatchObject({ reason: "none" });
   });
 });
 

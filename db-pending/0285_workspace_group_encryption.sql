@@ -504,6 +504,7 @@ revoke all on function public.rout_ws_group_manager(uuid) from public, rout_app;
 revoke all on function public.rout_ws_group_envelope_ok(text, text) from public, rout_app;
 revoke all on function public.rout_ws_group_epoch_ok(integer) from public, rout_app;
 revoke all on function public.rout_ws_group_active(uuid) from public, rout_app;
+revoke all on function public.rout_ws_group_member_revoke() from public, rout_app;
 
 -- Entry points: PUBLIC gets nothing, rout_app executes exactly these.
 revoke all on function public.rout_ws_group_publish(uuid, integer, text, text) from public;

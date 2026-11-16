@@ -13,6 +13,10 @@ begin
   end if;
 end $rollback$;
 
+-- The role-revocation trigger goes before the function it calls.
+drop trigger if exists workspace_members_role_revoke_ws_keys on public.workspace_members;
+drop function if exists public.rout_ws_group_member_revoke();
+
 drop function if exists public.rout_ws_answer_fetch(bytea);
 drop function if exists public.rout_public_ws_faq(text);
 drop function if exists public.rout_ws_question_decline(uuid);
