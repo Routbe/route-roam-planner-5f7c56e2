@@ -10,6 +10,9 @@
 --   * Key rotation: publishing a new epoch retires the previous one. Remaining managers
 --     issue member keys for the new epoch; a former manager holds no envelope for it and so
 --     cannot open questions filed after the rotation.
+--   * Revocation: the moment a member stops being owner or admin, a trigger on
+--     workspace_members deletes every envelope they hold, so a former manager opens no
+--     question at all -- neither one filed before the change nor one filed after it.
 --
 -- Questions (public.workspace_questions) arrive as one RVE1 envelope of kind wq sealed to
 -- the workspace's active epoch key, plus the visitor's reply public key and the SHA-256 of
