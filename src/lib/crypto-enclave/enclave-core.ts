@@ -1133,6 +1133,190 @@ const coreHandlers: CoreHandlers = {
     }
   },
 
+  // ---- Workspace group encryption (db-pending/0285, workspace-seal.ts) ----
+
+  /**
+   * A workspace's own key pair for one epoch. The secret half leaves the worker only inside
+   * `envelope`: the wsk sealed to the manager who is creating the key.
+   */
+  async "wsGroup.generate"({ workspaceId, epoch, self }) {
+    const ws = str(workspaceId, 64);
+    if (!UUID.test(ws)) fail("invalid_input");
+    if (!Number.isSafeInteger(epoch) || epoch < 1 || epoch > 1_000_000) fail("invalid_input");
+    const selfRef = str(self?.memberRef, 64);
+    if (!UUID.test(selfRef)) fail("invalid_input");
+    const selfKey = bytes(self?.publicKey);
+    if (selfKey.length !== PUBLIC_KEY_BYTES) fail("invalid_input");
+    const keys = workspaceGroupKeys();
+    try {
+      return {
+        publicKey: keys.publicKey,
+        kid: keys.kid,
+        envelope: sealWorkspaceKey({ workspaceId: ws, epoch, memberRef: selfRef, memberPublicKey: selfKey, workspaceSecret: keys.secretKey }),
+      };
+    } catch (e) {
+      if (e instanceof EnclaveFailure) throw e;
+      fail("invalid_input");
+    } finally {
+      wipe(keys.secretKey);
+    }
+  },
+
+  /**
+   * Ships the workspace key to more managers. The caller's own device key opens their wsk
+   * inside the worker, so the workspace secret is never handed to the UI -- not even here.
+   */
+  async "wsGroup.sealFor"({ userId, workspaceId, epoch, own, targets }) {
+    const ws = str(workspaceId, 64);
+    if (!UUID.test(ws)) fail("invalid_input");
+    if (!Number.isSafeInteger(epoch) || epoch < 1 || epoch > 1_000_000) fail("invalid_input");
+    const ownRef = str(own?.memberRef, 64);
+    if (!UUID.test(ownRef)) fail("invalid_input");
+    const ownEnv = bytes(own?.envelope);
+    if (ownEnv.byteLength > ENVELOPE_MAX_BYTES) fail("invalid_input");
+    if (!Array.isArray(targets) || targets.length < 1 || targets.length > 20) fail("invalid_input");
+    const list = targets.map((t) => {
+      const ref = str(t?.memberRef, 64);
+      if (!UUID.test(ref)) fail("invalid_input");
+      const publicKey = bytes(t?.publicKey);
+      if (publicKey.length !== PUBLIC_KEY_BYTES) fail("invalid_input");
+      return { ref, publicKey };
+    });
+    if (new Set(list.map((t) => t.ref)).size !== list.length) fail("invalid_input");
+    const secret = await withRve1Key(str(userId, 64), (seed) => {
+      try {
+        return openWorkspaceKey({ workspaceId: ws, epoch, memberRef: ownRef, envelope: ownEnv, deviceSecretKey: seed });
+      } catch {
+        fail("decrypt_failed");
+      }
+    });
+    try {
+      return {
+        envelopes: list.map(({ ref, publicKey }) => ({
+          memberRef: ref,
+          envelope: sealWorkspaceKey({ workspaceId: ws, epoch, memberRef: ref, memberPublicKey: publicKey, workspaceSecret: secret }),
+        })),
+      };
+    } catch (e) {
+      if (e instanceof EnclaveFailure) throw e;
+      fail("invalid_input");
+    } finally {
+      wipe(secret);
+    }
+  },
+
+  /**
+   * The inbox view: every question of one epoch, opened with the workspace key the caller's
+   * own envelope carries. An envelope that does not belong to this epoch stays unreadable
+   * while the rest still open -- one bad row never blanks the inbox.
+   */
+  async "wsQuestion.open"({ userId, workspaceId, epoch, own, items }) {
+    const ws = str(workspaceId, 64);
+    if (!UUID.test(ws)) fail("invalid_input");
+    if (!Number.isSafeInteger(epoch) || epoch < 1 || epoch > 1_000_000) fail("invalid_input");
+    const ownRef = str(own?.memberRef, 64);
+    if (!UUID.test(ownRef)) fail("invalid_input");
+    const ownEnv = bytes(own?.envelope);
+    if (ownEnv.byteLength > ENVELOPE_MAX_BYTES) fail("invalid_input");
+    if (!Array.isArray(items) || items.length > 100) fail("invalid_input");
+    const list = items.map((it) => {
+      const payloadId = str(it?.payloadId, 64);
+      if (!UUID.test(payloadId)) fail("invalid_input");
+      const envelope = bytes(it?.envelope);
+      if (envelope.byteLength > ENVELOPE_MAX_BYTES) fail("invalid_input");
+      return { payloadId, envelope };
+    });
+    const secret = await withRve1Key(str(userId, 64), (seed) => {
+      try {
+        return openWorkspaceKey({ workspaceId: ws, epoch, memberRef: ownRef, envelope: ownEnv, deviceSecretKey: seed });
+      } catch {
+        fail("decrypt_failed");
+      }
+    });
+    try {
+      return {
+        texts: list.map(({ payloadId, envelope }) => {
+          try {
+            return openWorkspaceQuestion({ workspaceId: ws, epoch, payloadId, envelope, workspaceSecret: secret });
+          } catch {
+            return null;
+          }
+        }),
+      };
+    } finally {
+      wipe(secret);
+    }
+  },
+
+  /**
+   * A visitor's question: sealed to the workspace's live key, with a reply key derived from a
+   * fresh token. The token leaves as text for the address fragment; its bytes and the reply
+   * secret are wiped here, so the server only ever sees the token hash and the reply key.
+   */
+  async "wsQuestion.seal"({ workspaceId, epoch, workspacePublicKey, text }) {
+    const ws = str(workspaceId, 64);
+    if (!UUID.test(ws)) fail("invalid_input");
+    if (!Number.isSafeInteger(epoch) || epoch < 1 || epoch > 1_000_000) fail("invalid_input");
+    const pk = bytes(workspacePublicKey);
+    if (pk.length !== PUBLIC_KEY_BYTES) fail("invalid_input");
+    const body = str(text, WORKSPACE_QUESTION_MAX);
+    const payloadId = crypto.randomUUID();
+    const token = newWorkspaceToken();
+    let keys: RecipientKeys | null = null;
+    try {
+      const sealed = sealWorkspaceQuestion({ workspaceId: ws, epoch, payloadId, workspacePublicKey: pk, text: body });
+      keys = workspaceReplyKeys(token);
+      return {
+        payloadId,
+        envelope: sealed.envelope,
+        hash: sealed.hash,
+        token: b64u.encode(token),
+        guestPublicKey: keys.publicKey,
+        tokenHash: workspaceTokenHash(token),
+        pow: solveSealedPow("wsask", payloadId, [{ ref: ws, envelope: sealed.envelope }], Date.now()),
+      };
+    } catch (e) {
+      if (e instanceof EnclaveFailure) throw e;
+      fail("invalid_input");
+    } finally {
+      wipe(token, keys?.secretKey);
+    }
+  },
+
+  /** One private answer, sealed to the reply public key the question row carries. */
+  async "wsAnswer.seal"({ replyPublicKey, question, answer }) {
+    const pk = bytes(replyPublicKey);
+    if (pk.length !== PUBLIC_KEY_BYTES) fail("invalid_input");
+    const q = str(question, WORKSPACE_QUESTION_MAX);
+    const a = str(answer, WORKSPACE_ANSWER_MAX);
+    try {
+      const sealed = sealWorkspaceAnswer({ replyPublicKey: pk, question: q, answer: a });
+      return { envelope: sealed.envelope, hash: sealed.hash };
+    } catch (e) {
+      if (e instanceof EnclaveFailure) throw e;
+      fail("invalid_input");
+    }
+  },
+
+  /** The visitor's own view: the token in their fragment finds the row, their key opens it. */
+  async "wsAnswer.open"({ token, envelope }) {
+    const raw = str(token, 64);
+    if (!/^[A-Za-z0-9_-]{43}$/.test(raw)) fail("invalid_input");
+    const env = bytes(envelope);
+    if (env.byteLength > ENVELOPE_MAX_BYTES) fail("invalid_input");
+    let secret: Uint8Array | null = null;
+    try {
+      secret = b64u.decode(raw);
+      if (secret.length !== 32) fail("invalid_input");
+      return openWorkspaceAnswer({ token: secret, envelope: env });
+    } catch (e) {
+      if (e instanceof EnclaveFailure) throw e;
+      fail("decrypt_failed");
+    } finally {
+      wipe(secret);
+    }
+  },
+
   async "pseudonym.derive"({ masterSeed, hostId, bookingNonce }) {
     const seed = bytes(masterSeed);
     const nonce = bytes(bookingNonce);
